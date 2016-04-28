@@ -6,6 +6,7 @@ enum Parameter {
 	tid, 
 	id, 
 	token, 
-	api,
+	api, 
+	sid,
 	;
 }

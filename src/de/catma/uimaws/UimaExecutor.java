@@ -1,21 +1,16 @@
 package de.catma.uimaws;
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.ProcessBuilder.Redirect;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.restlet.data.Form;
-import org.restlet.data.Status;
 import org.restlet.resource.Get;
-import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 
 public class UimaExecutor extends ServerResource {
-	private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("yyMMddhhmm");
-
+	private static final ExecutorService EXECUTORSERVICE = Executors.newFixedThreadPool(4);
+	
 	@Get
 	public String execute() {
 		
@@ -33,34 +28,15 @@ public class UimaExecutor extends ServerResource {
 		String identifier = form.getFirstValue(Parameter.id.name());
 		String token = form.getFirstValue(Parameter.token.name());
 		String apiURL = form.getFirstValue(Parameter.api.name());
+		String sourceDocId = form.getFirstValue(Parameter.sid.name());
+
 		
-		ProcessBuilder pb =
-			   new ProcessBuilder(
-					   generatorPath, 
-					   corpusId, tagsetIdentification, 
-					   identifier, token, apiURL);
-		File log = new File(
-				logFolder, 
-				"AnnotationGenerator" + FORMATTER.format(new Date()) + ".log");
-		pb.redirectErrorStream(true);
-		pb.redirectOutput(Redirect.appendTo(log));
-		
-		try {
-			Process proc = pb.start();
-	
-			int rc = proc.waitFor();
-			if(rc != 0){
-				throw new ResourceException(
-					Status.SERVER_ERROR_INTERNAL, 
-					"uima pipeline terminated with return code" + rc);
-			}
-		}
-		catch (InterruptedException | IOException e) {
-			throw new ResourceException(
-					Status.SERVER_ERROR_INTERNAL, 
-					"uima pipeline terminated with error", e);
-		}
-		
+		EXECUTORSERVICE.submit(
+			new UimaExecutionJob(
+				generatorPath, logFolder,
+				corpusId, tagsetIdentification, 
+				identifier, token, apiURL, sourceDocId));
+
 		return corpusId;
 		
 	}
